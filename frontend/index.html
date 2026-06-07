@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevOps Demo App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="container">
+    <h1>DevOps Demo App</h1>
+    <p class="subtitle">Click the button to fetch a message from the database.</p>
+
+    <button id="getMessageBtn" onclick="getMessage()">Get Message</button>
+
+    <div id="result" class="result hidden">
+      <span id="messageText"></span>
+    </div>
+
+    <div id="error" class="error hidden">
+      Something went wrong. Is the backend running?
+    </div>
+  </div>
+
+<script>
+  window.BACKEND_URL = 'http://127.0.0.1:<backend-port>';
+</script>
+<script src="app.js"></script></body>
+</html>

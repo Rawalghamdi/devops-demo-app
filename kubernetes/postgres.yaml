@@ -1,0 +1,69 @@
+# postgres deployment — one replica is fine for a demo
+# in production you'd use a managed database service instead
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: devops-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "demodb"
+            - name: POSTGRES_USER
+              value: "demouser"
+            - name: POSTGRES_PASSWORD
+              value: "demopassword"
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-sql
+          configMap:
+            name: postgres-init
+
+---
+# service so other pods can reach postgres by hostname
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: devops-demo
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+# configmap holds the SQL init script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: devops-demo
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS messages (
+      id      SERIAL PRIMARY KEY,
+      content TEXT NOT NULL
+    );
+
+    INSERT INTO messages (content)
+    VALUES ('Hello from PostgreSQL! This message travelled through the full DevOps stack. Pipeline is fully automated now.')
+    ON CONFLICT DO NOTHING;

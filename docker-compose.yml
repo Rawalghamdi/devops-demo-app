@@ -1,0 +1,49 @@
+# docker compose file to run the full stack locally
+# run: docker compose up --build
+
+version: '3.8'
+
+services:
+
+  # PostgreSQL database
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: demodb
+      POSTGRES_USER: demouser
+      POSTGRES_PASSWORD: demopassword
+    volumes:
+      - type: bind
+        source: ./database
+        target: /docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demouser -d demodb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Node.js backend
+  backend:
+    build: ./backend
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: demodb
+      DB_USER: demouser
+      DB_PASSWORD: demopassword
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # nginx frontend
+  frontend:
+    build: ./frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend

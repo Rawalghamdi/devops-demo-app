@@ -1,0 +1,7 @@
+# namespace to keep all our app resources grouped together
+# makes it easier to manage and delete everything at once
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: devops-demo

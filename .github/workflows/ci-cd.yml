@@ -1,0 +1,111 @@
+# CI/CD pipeline using GitHub Actions + Docker Hub
+# Job 1: lint and check (runs on every push and PR)
+# Job 2: build and push images to Docker Hub (runs on push to main only)
+# Job 3: verify the images were pushed successfully
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  DOCKERHUB_USERNAME: rawanalghamdi
+  FRONTEND_IMAGE: rawanalghamdi/devops-demo-frontend
+  BACKEND_IMAGE: rawanalghamdi/devops-demo-backend
+
+jobs:
+
+  # -----------------------------------------------
+  # Job 1: Run basic checks on the backend code
+  # -----------------------------------------------
+  lint-and-check:
+    name: Lint and Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm test
+
+      - name: Check frontend files exist
+        run: |
+          test -f frontend/index.html
+          test -f frontend/style.css
+          test -f frontend/app.js
+          echo "All frontend files found"
+
+  # -----------------------------------------------
+  # Job 2: Build and push Docker images to Docker Hub
+  # only runs on push to main (not on pull requests)
+  # -----------------------------------------------
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}:latest
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:latest
+
+  # -----------------------------------------------
+  # Job 3: Verify images were pushed to Docker Hub
+  # -----------------------------------------------
+  verify:
+    name: Verify Images on Docker Hub
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Pull and verify frontend image
+        run: docker pull ${{ env.FRONTEND_IMAGE }}:latest
+
+      - name: Pull and verify backend image
+        run: docker pull ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Print success
+        run: |
+          echo "Both images are available on Docker Hub:"
+          echo "  ${{ env.FRONTEND_IMAGE }}:latest"
+          echo "  ${{ env.BACKEND_IMAGE }}:latest"
+          echo ""
+          echo "To deploy locally with these images:"
+          echo "  kubectl set image deployment/frontend frontend=${{ env.FRONTEND_IMAGE }}:latest -n devops-demo"
+          echo "  kubectl set image deployment/backend  backend=${{ env.BACKEND_IMAGE }}:latest  -n devops-demo"

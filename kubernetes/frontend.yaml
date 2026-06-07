@@ -1,0 +1,39 @@
+# frontend deployment — nginx serving the static files
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: devops-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: rawanalghamdi/devops-demo-frontend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+
+---
+# using LoadBalancer so we can access the frontend from outside the cluster
+# on minikube, run: minikube service frontend -n devops-demo
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: devops-demo
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
